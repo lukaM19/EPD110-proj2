@@ -4,7 +4,7 @@ import numpy as np
 ## DRAWS ALL CORNERS FOUND ON THE FRAME
 
 def draw_points(corners, image) :
-    for i in range(0,corners.shape[0]-1) :
+    for i in range(0,corners.shape[0]) :
             corner = corners[i,:,:]
             x = corner.astype(int)[0,0]
             y = corner.astype(int)[0,1]
@@ -23,24 +23,37 @@ def draw_centre(corners, image) :
     return image     
 
 
-#MAIN PART OF CODE
+## RETURNS (x, y) OF THE CHESSBOARD CENTRE AS FRACTIONS OF FRAME WIDTH/HEIGHT (0..1),
+## OR None IF NO CHESSBOARD IS IN THE FRAME.
+## pattern_size = NUMBER OF INNER CORNERS (cols, rows) OF YOUR BOARD
 
-vid = cv2.VideoCapture("data/Tello_video.mp4")
-total_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-print(vid.get(cv2.CAP_PROP_FPS))
+def detect_chessboard(frame, pattern_size=(7, 7)) :
+    grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    found, corners = cv2.findChessboardCorners(grey, pattern_size, flags=cv2.CALIB_CB_FAST_CHECK)
+    if not found :
+        return None
+    h, w = grey.shape
+    return np.median(corners[:,:,0]) / w, np.median(corners[:,:,1]) / h
 
-#TAKES EACH FRAME FROM THE VIDEO AND APPLIES USERS REQUESTS
-for j in range(0,total_frames-1) :
 
-    frame = vid.read()[1]
-    grey_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    board_corners = cv2.goodFeaturesToTrack(grey_frame,300, 0.1, 2)    
+#MAIN PART OF CODE (ONLY RUNS WHEN THIS FILE IS EXECUTED DIRECTLY)
 
-#   frame = draw_points(board_corners, frame)
-   
-    frame_with_centre = draw_centre(board_corners, frame)        
-    
-    cv2.imshow("First FRame", frame_with_centre)
-    cv2.waitKey(20) #FPS is 30 frames must be played approx. every 33ms. Take off 10ms for processing time. 
+if __name__ == "__main__" :
+    vid = cv2.VideoCapture("data/Tello_video.mp4")
+    print(vid.get(cv2.CAP_PROP_FPS))
 
-vid.release()
+    while True :
+        ok, frame = vid.read()
+        if not ok :
+            break
+
+        hit = detect_chessboard(frame)
+        if hit :
+            print(f"Chessboard at x={hit[0]:.3f}, y={hit[1]:.3f}")
+
+        cv2.imshow("First FRame", frame)
+        if cv2.waitKey(20) & 0xFF == ord("q") :
+            break
+
+    vid.release()
+    cv2.destroyAllWindows()
