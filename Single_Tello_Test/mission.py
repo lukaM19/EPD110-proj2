@@ -1,5 +1,5 @@
-import math, socket, threading
-import cv2, numpy as np, h264decoder
+import math, threading
+import cv2
 from tello import Tello
 from tello_test_py3 import KeepAlive
 from occupancy import build_occupancy_matrix
@@ -31,30 +31,34 @@ def fly_route(tello, cmds):
         tello.send_command(c)
 
 def detect_loop():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("", 11111))                         # bind after flight to avoid stale frames
-    decoder = h264decoder.H264Decoder()
+    cap = cv2.VideoCapture("udp://@0.0.0.0:11111", cv2.CAP_FFMPEG)
     try:
+        if not cap.isOpened():
+            print("Could not open Tello video stream on UDP 11111")
+            return
         while True:
-            res, _ = sock.recvfrom(2048)
-            for frame, w, h, _ in decoder.decode(res):
-                if frame is None:
-                    continue
-                img = np.frombuffer(frame, np.uint8).reshape((h, w, 3))
-                hit = detect_chessboard(img)
-                if hit:
-                    print(f"Chessboard at x={hit[0]:.3f}, y={hit[1]:.3f}")
-                cv2.imshow("Tello", img)
+            ok, img = cap.read()
+            if not ok:
+                continue
+
+            hit = detect_chessboard(img)
+            if hit:
+                print(f"Chessboard at x={hit[0]:.3f}, y={hit[1]:.3f}")
+            cv2.imshow("Tello", img)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
-        sock.close()
+        cap.release()
         cv2.destroyAllWindows()
 
 def main():
-    start, end = (0, 0), (4, 4)
-    grid = build_occupancy_matrix(5, 5, start, end, obstacles=[(1, 1), (2, 3)])
-    cmds = route_to_commands(plan_route(grid, start, end), cell_size_cm=50)
+    start, end = (0, 0), (1, 1)
+    grid = build_occupancy_matrix(2, 2, start, end, obstacles=[])#(1, 1), (2, 3)])
+    #temp , forward 1 rught one
+    route = [(0, 0), (1, 0), (1, 1)]
+    cmds = route_to_commands(route, cell_size_cm=100)
+    print(cmds)
+    #cmds = route_to_commands(plan_route(grid, start, end), cell_size_cm=50)
     tello = Tello()
     fly_route(tello, cmds)
     keep = KeepAlive(tello)
