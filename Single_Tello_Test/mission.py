@@ -53,12 +53,9 @@ def detect_loop():
 
 def main():
     start, end = (0, 0), (1, 1)
-    grid = build_occupancy_matrix(2, 2, start, end, obstacles=[])#(1, 1), (2, 3)])
-    #temp , forward 1 rught one
-    route = [(0, 0), (1, 0), (1, 1)]
-    cmds = route_to_commands(route, cell_size_cm=100)
+    grid = build_occupancy_matrix(2, 2, start, end, obstacles=(1, 1), (2, 3)])
+    cmds = route_to_commands(plan_route(grid, start, end), cell_size_cm=50)
     print(cmds)
-    #cmds = route_to_commands(plan_route(grid, start, end), cell_size_cm=50)
     tello = Tello()
     fly_route(tello, cmds)
     keep = KeepAlive(tello)
