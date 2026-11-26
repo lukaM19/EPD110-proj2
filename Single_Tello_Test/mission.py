@@ -5,10 +5,11 @@ from tello_test_py3 import KeepAlive
 from occupancy import build_occupancy_matrix, world_to_cell, cell_to_world
 from planner import plan_route
 from chessboard import detect_chessboard
+import numpy as np
 
 # Assumes the drone starts facing +row and never rotates.
-# Drone starts at drone_start facing +x. +y is to its left.
-AXIS_TO_CMD = {(1, 0): "forward", (-1, 0): "back", (0, 1): "left", (0, -1): "right"}
+# Drone starts at drone_start facing +y. +x is to its right.
+AXIS_TO_CMD = {(0, 1): "forward", (0, -1): "back", (-1, 0): "left", (1, 0): "right"}
 
 def route_to_commands(route, x_min, y_min, cell_cm):
     pts = [cell_to_world(c, x_min, y_min, cell_cm) for c in route]
@@ -68,7 +69,12 @@ DRONE_FINISH = (500, 0)
 def main():
     grid, start, end = build_occupancy_matrix(
         X_MIN, X_MAX, Y_MIN, Y_MAX, DRONE_START, DRONE_FINISH, OBSTACLES_XY_CM, CELL_CM)
-    print(grid)
+    visual_grid = grid.astype('str')
+    visual_grid = np.char.replace(visual_grid, '0', '.')
+    visual_grid = np.char.replace(visual_grid, '1', '|')
+    visual_grid[start] = "S"
+    visual_grid[end] = "X"
+    print("\n".join(" ".join(row) for row in visual_grid[::-1]))
     route = plan_route(grid, start, end)
     cmds = route_to_commands(route, X_MIN, Y_MIN, CELL_CM)
     print(cmds)
